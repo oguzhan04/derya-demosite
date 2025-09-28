@@ -158,9 +158,9 @@ function createDelayByCarrierChart(rows) {
             datasets: [{
                 label: 'Avg Delay (days)',
                 data: filteredCarriers.map(carrier => carrier.avgDelay.toFixed(1)),
-                backgroundColor: 'rgba(59, 130, 246, 0.8)', // Blue color
-                borderColor: 'rgba(59, 130, 246, 1)',
-                borderWidth: 1
+                backgroundColor: 'rgba(30, 58, 138, 0.8)', // Dark blue color
+                borderColor: 'rgba(30, 58, 138, 1)',
+                borderWidth: 2
             }]
         },
         options: {
@@ -179,13 +179,27 @@ function createDelayByCarrierChart(rows) {
                     beginAtZero: true,
                     title: {
                         display: true,
-                        text: 'Avg Delay (days)'
+                        text: 'Avg Delay (days)',
+                        color: 'rgba(55, 65, 81, 0.8)'
+                    },
+                    ticks: {
+                        color: 'rgba(55, 65, 81, 0.7)'
+                    },
+                    grid: {
+                        color: 'rgba(55, 65, 81, 0.1)'
                     }
                 },
                 x: {
                     title: {
                         display: true,
-                        text: 'Carrier'
+                        text: 'Carrier',
+                        color: 'rgba(55, 65, 81, 0.8)'
+                    },
+                    ticks: {
+                        color: 'rgba(55, 65, 81, 0.7)'
+                    },
+                    grid: {
+                        color: 'rgba(55, 65, 81, 0.1)'
                     }
                 }
             }
@@ -262,14 +276,14 @@ function createRiskDistributionChart(rows) {
         return;
     }
 
-    // Define colors for different risk levels
+    // Define colors for different risk levels (dark blue theme)
     const getRiskColor = (riskLevel) => {
         switch (riskLevel.toLowerCase()) {
-            case 'low': return '#10B981'; // Green
-            case 'medium': return '#F59E0B'; // Orange
-            case 'high': return '#EF4444'; // Red
-            case 'critical': return '#DC2626'; // Dark red
-            default: return '#6B7280'; // Gray for others
+            case 'low': return 'rgba(30, 58, 138, 0.6)'; // Dark blue
+            case 'medium': return 'rgba(30, 58, 138, 0.8)'; // Dark blue
+            case 'high': return 'rgba(30, 58, 138, 1)'; // Dark blue
+            case 'critical': return 'rgba(15, 23, 42, 0.9)'; // Darker blue
+            default: return 'rgba(30, 58, 138, 0.7)'; // Dark blue
         }
     };
 
@@ -320,7 +334,8 @@ function createRiskDistributionChart(rows) {
                     position: 'bottom',
                     labels: {
                         padding: 20,
-                        usePointStyle: true
+                        usePointStyle: true,
+                        color: 'rgba(55, 65, 81, 0.8)'
                     }
                 }
             },
@@ -384,12 +399,12 @@ function createCostDistanceChart(rows) {
             datasets: [{
                 label: 'Shipments',
                 data: scatterData,
-                backgroundColor: 'rgba(59, 130, 246, 0.7)', // Semi-transparent blue
-                borderColor: 'rgba(59, 130, 246, 0.8)',
+                backgroundColor: 'rgba(30, 58, 138, 0.7)', // Semi-transparent dark blue
+                borderColor: 'rgba(30, 58, 138, 0.8)',
                 pointRadius: 4,
                 pointHoverRadius: 6,
-                pointHoverBackgroundColor: 'rgba(59, 130, 246, 0.9)',
-                pointHoverBorderColor: 'rgba(59, 130, 246, 1)',
+                pointHoverBackgroundColor: 'rgba(30, 58, 138, 0.9)',
+                pointHoverBorderColor: 'rgba(30, 58, 138, 1)',
                 pointHoverBorderWidth: 2
             }]
         },
@@ -418,23 +433,33 @@ function createCostDistanceChart(rows) {
                     position: 'bottom',
                     title: {
                         display: true,
-                        text: 'Distance (km)'
+                        text: 'Distance (km)',
+                        color: 'rgba(55, 65, 81, 0.8)'
                     },
                     ticks: {
+                        color: 'rgba(55, 65, 81, 0.7)',
                         callback: function(value) {
                             return value.toLocaleString();
                         }
+                    },
+                    grid: {
+                        color: 'rgba(55, 65, 81, 0.1)'
                     }
                 },
                 y: {
                     title: {
                         display: true,
-                        text: 'Cost (USD)'
+                        text: 'Cost (USD)',
+                        color: 'rgba(55, 65, 81, 0.8)'
                     },
                     ticks: {
+                        color: 'rgba(55, 65, 81, 0.7)',
                         callback: function(value) {
                             return '$' + value.toLocaleString();
                         }
+                    },
+                    grid: {
+                        color: 'rgba(55, 65, 81, 0.1)'
                     }
                 }
             }
@@ -509,11 +534,11 @@ function createDataPreviewTable(rows) {
     // Create table HTML
     let tableHTML = `
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+            <table class="min-w-full divide-y divide-white/20">
+                <thead class="bg-gray-100">
                     <tr>
                         ${finalColumns.map(col => `
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                                 ${col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                             </th>
                         `).join('')}
@@ -521,7 +546,7 @@ function createDataPreviewTable(rows) {
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     ${previewRows.map(row => `
-                        <tr class="hover:bg-gray-50">
+                        <tr class="hover:bg-gray-50 transition-colors">
                             ${finalColumns.map(col => {
                                 // Find the actual column name in the row (case-insensitive)
                                 const actualCol = Object.keys(row).find(key => 
@@ -559,7 +584,7 @@ function createDataPreviewTable(rows) {
                 </tbody>
             </table>
         </div>
-        <div class="mt-4 text-sm text-gray-500 text-center">
+        <div class="mt-4 text-sm text-gray-600 text-center">
             Showing ${previewRows.length} of ${rows.length} shipments
         </div>
     `;
@@ -659,9 +684,9 @@ function createModeEmissionsChart(rows) {
             datasets: [{
                 label: 'CO₂ (kg)',
                 data: emissions,
-                backgroundColor: 'rgba(16, 185, 129, 0.8)', // Green color for emissions
-                borderColor: 'rgba(16, 185, 129, 1)',
-                borderWidth: 1
+                backgroundColor: 'rgba(30, 58, 138, 0.8)', // Dark blue color for emissions
+                borderColor: 'rgba(30, 58, 138, 1)',
+                borderWidth: 2
             }]
         },
         options: {
@@ -680,18 +705,30 @@ function createModeEmissionsChart(rows) {
                     beginAtZero: true,
                     title: {
                         display: true,
-                        text: 'CO₂ (kg)'
+                        text: 'CO₂ (kg)',
+                        color: 'rgba(55, 65, 81, 0.8)'
                     },
                     ticks: {
+                        color: 'rgba(55, 65, 81, 0.7)',
                         callback: function(value) {
                             return value.toLocaleString() + ' kg';
                         }
+                    },
+                    grid: {
+                        color: 'rgba(55, 65, 81, 0.1)'
                     }
                 },
                 x: {
                     title: {
                         display: true,
-                        text: 'Mode'
+                        text: 'Mode',
+                        color: 'rgba(55, 65, 81, 0.8)'
+                    },
+                    ticks: {
+                        color: 'rgba(55, 65, 81, 0.7)'
+                    },
+                    grid: {
+                        color: 'rgba(55, 65, 81, 0.1)'
                     }
                 }
             }
@@ -852,20 +889,25 @@ function renderInsights(rows) {
     
     // Render insights
     const insightsContainer = document.querySelector('#insights .space-y-4');
+    console.log('Insights container found:', insightsContainer);
+    console.log('Insights to render:', insights);
+    
     if (insightsContainer) {
         if (insights.length > 0) {
             insightsContainer.innerHTML = insights.map(insight => 
-                `<div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p class="text-blue-800 text-sm">• ${insight}</p>
+                `<div class="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <p class="text-gray-900 text-sm">• ${insight}</p>
                 </div>`
             ).join('');
         } else {
             insightsContainer.innerHTML = `
-                <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p class="text-blue-800 text-sm">• Data loaded successfully. No insights available in this sample.</p>
+                <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <p class="text-gray-900 text-sm">• Data loaded successfully. No insights available in this sample.</p>
                 </div>
             `;
         }
+    } else {
+        console.error('Insights container not found');
     }
     
     console.log('Insights rendered:', insights);
@@ -929,12 +971,12 @@ function renderOutliersAndAnomalies(rows) {
 
     if (lateShipments.length > 0) {
         const tableHTML = `
-            <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 class="text-sm font-medium text-blue-900 mb-3">Top ${lateShipments.length} Late Shipments</h4>
+            <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <h4 class="text-sm font-medium text-gray-900 mb-3">Top ${lateShipments.length} Late Shipments</h4>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-xs">
                         <thead>
-                            <tr class="text-blue-700">
+                            <tr class="text-gray-700">
                                 <th class="text-left py-1 pr-2">ID</th>
                                 <th class="text-left py-1 pr-2">Carrier</th>
                                 <th class="text-left py-1 pr-2">Lane</th>
@@ -943,11 +985,11 @@ function renderOutliersAndAnomalies(rows) {
                         </thead>
                         <tbody>
                             ${lateShipments.map(shipment => `
-                                <tr class="border-t border-blue-200">
-                                    <td class="py-1 pr-2 text-blue-800">${shipment.shipmentId}</td>
-                                    <td class="py-1 pr-2 text-blue-800">${shipment.carrier}</td>
-                                    <td class="py-1 pr-2 text-blue-800">${shipment.lane}</td>
-                                    <td class="py-1 text-right text-blue-800 font-medium">${shipment.delayDays}</td>
+                                <tr class="border-t border-gray-200">
+                                    <td class="py-1 pr-2 text-gray-900">${shipment.shipmentId}</td>
+                                    <td class="py-1 pr-2 text-gray-900">${shipment.carrier}</td>
+                                    <td class="py-1 pr-2 text-gray-900">${shipment.lane}</td>
+                                    <td class="py-1 text-right text-gray-900 font-medium">${shipment.delayDays}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -1027,10 +1069,10 @@ function renderOutliersAndAnomalies(rows) {
 
         if (weeklyInsights.length > 0) {
             const weeklyHTML = `
-                <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h4 class="text-sm font-medium text-blue-900 mb-2">Weekly Performance</h4>
+                <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <h4 class="text-sm font-medium text-gray-900 mb-2">Weekly Performance</h4>
                     ${weeklyInsights.map(insight => 
-                        `<p class="text-blue-800 text-sm">• ${insight}</p>`
+                        `<p class="text-gray-900 text-sm">• ${insight}</p>`
                     ).join('')}
                 </div>
             `;
@@ -1056,10 +1098,10 @@ async function loadExcel(url) {
         // Show loading spinner
         const fileHint = document.getElementById('fileHint');
         fileHint.innerHTML = `
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div class="flex items-center">
-                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-3"></div>
-                    <p class="text-blue-800 text-sm">Loading freight data...</p>
+            <div class="bg-white backdrop-blur-md border border-gray-200 rounded-xl p-6 shadow-lg">
+                <div class="flex items-center space-x-3">
+                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>
+                    <p class="text-gray-900 text-sm font-medium">Loading freight data...</p>
                 </div>
             </div>
         `;
@@ -1081,10 +1123,30 @@ async function loadExcel(url) {
         // Convert to JSON array
         const rows = XLSX.utils.sheet_to_json(worksheet);
 
-        // Hide loading spinner and show success message
+        // Hide loading spinner and show success message with tour button
         fileHint.innerHTML = `
-            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p class="text-green-800 text-sm">✅ Successfully loaded ${rows.length} freight records</p>
+            <div class="bg-white backdrop-blur-md border border-gray-200 rounded-xl p-6 shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-gray-900 text-sm font-medium">✅ Successfully loaded ${rows.length} freight records</p>
+                            <p class="text-gray-600 text-xs">Ready for analysis!</p>
+                        </div>
+                    </div>
+                    <button id="walkthrough-start-success" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 animate-pulse">
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span class="font-semibold">Start Tour</span>
+                        </div>
+                    </button>
+                </div>
             </div>
         `;
 
@@ -1121,6 +1183,16 @@ async function loadExcel(url) {
         // Render outliers and anomalies
         renderOutliersAndAnomalies(rows);
 
+        // Add event listener for success message tour button
+        setTimeout(() => {
+            const successTourBtn = document.getElementById('walkthrough-start-success');
+            if (successTourBtn) {
+                successTourBtn.addEventListener('click', () => {
+                    walkthrough.start();
+                });
+            }
+        }, 100);
+
         return rows;
     } catch (error) {
         console.error('Error loading Excel file:', error);
@@ -1128,8 +1200,15 @@ async function loadExcel(url) {
         // Show error message
         const fileHint = document.getElementById('fileHint');
         fileHint.innerHTML = `
-            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p class="text-red-800 text-sm">❌ Error loading freight data: ${error.message}</p>
+            <div class="bg-white backdrop-blur-md border border-gray-200 rounded-xl p-6 shadow-lg">
+                <div class="flex items-center space-x-3">
+                    <div class="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
+                        <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </div>
+                    <p class="text-gray-900 text-sm font-medium">❌ Error loading freight data: ${error.message}</p>
+                </div>
             </div>
         `;
         
@@ -1137,13 +1216,12 @@ async function loadExcel(url) {
     }
 }
 
-// Function to show demo message
-function showDemoMessage() {
-    // Create a Tailwind-styled popup
-    const popup = document.createElement('div');
-    popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-    popup.innerHTML = `
-        <div class="bg-white rounded-lg shadow-xl max-w-md mx-4 p-6 transform transition-all">
+// Function to show welcome message
+function showWelcomeMessage() {
+    const welcomePopup = document.createElement('div');
+    welcomePopup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    welcomePopup.innerHTML = `
+        <div class="bg-white backdrop-blur-md rounded-xl shadow-xl max-w-md mx-4 p-6 transform transition-all border border-gray-200">
             <div class="flex items-center mb-4">
                 <div class="flex-shrink-0">
                     <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -1153,16 +1231,81 @@ function showDemoMessage() {
                     </div>
                 </div>
                 <div class="ml-3">
-                    <h3 class="text-lg font-medium text-gray-900">Demo Mode</h3>
+                    <h3 class="text-lg font-semibold text-gray-900">Welcome to Derya AI Freight!</h3>
                 </div>
             </div>
             <div class="mb-6">
-                <p class="text-sm text-gray-600">
+                <p class="text-sm text-gray-700 mb-4">
+                    🚀 Your freight data has been loaded and analyzed! 
+                </p>
+                <p class="text-sm text-gray-700">
+                    Take a guided tour to learn about all the features and insights available in your dashboard.
+                </p>
+            </div>
+            <div class="flex justify-between">
+                <button id="skip-welcome" class="px-4 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors">
+                    Skip Tour
+                </button>
+                <button id="start-walkthrough" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200">
+                    Start Tour
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Add to page
+    document.body.appendChild(welcomePopup);
+    
+    // Add event listeners
+    const skipBtn = welcomePopup.querySelector('#skip-welcome');
+    const startBtn = welcomePopup.querySelector('#start-walkthrough');
+    
+    const closeWelcome = () => {
+        document.body.removeChild(welcomePopup);
+    };
+    
+    skipBtn.addEventListener('click', closeWelcome);
+    startBtn.addEventListener('click', () => {
+        closeWelcome();
+        walkthrough.start();
+    });
+    
+    // Close on Escape key
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            closeWelcome();
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+}
+
+// Function to show demo message
+function showDemoMessage() {
+    // Create a Tailwind-styled popup
+    const popup = document.createElement('div');
+    popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    popup.innerHTML = `
+        <div class="bg-white backdrop-blur-md rounded-xl shadow-xl max-w-md mx-4 p-6 transform transition-all border border-gray-200">
+            <div class="flex items-center mb-4">
+                <div class="flex-shrink-0">
+                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-lg font-semibold text-gray-900">Demo Mode</h3>
+                </div>
+            </div>
+            <div class="mb-6">
+                <p class="text-sm text-gray-700">
                     ✨ This is a demo :) The sample dataset will be used automatically.
                 </p>
             </div>
             <div class="flex justify-end">
-                <button id="close-demo-popup" class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+                <button id="close-demo-popup" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200">
                     Got it!
                 </button>
             </div>
@@ -1195,10 +1338,347 @@ function showDemoMessage() {
     document.addEventListener('keydown', handleEscape);
 }
 
+// Walkthrough system
+class WalkthroughSystem {
+    constructor() {
+        this.currentStep = 0;
+        this.steps = [
+            {
+                title: "Welcome to Derya AI Freight",
+                description: "This dashboard helps you analyze freight data and identify optimization opportunities. Let's start by exploring the data upload feature.",
+                target: "#btn-upload",
+                action: () => this.highlightElement("#btn-upload"),
+                icon: "upload"
+            },
+            {
+                title: "Data Loading",
+                description: "Click 'Upload Data' to load your freight dataset. The system will automatically process and analyze your data.",
+                target: "#btn-upload",
+                action: () => this.simulateDataUpload(),
+                icon: "database"
+            },
+            {
+                title: "Filter Panel",
+                description: "Use these filters to narrow down your analysis by date range, carrier, transport mode, and risk level. Let me show you how they work.",
+                target: "#filters",
+                action: () => {
+                    this.highlightElement("#filters");
+                    this.populateFilters();
+                },
+                icon: "filter"
+            },
+            {
+                title: "Interactive Filters",
+                description: "Watch as I demonstrate filter interactions. You can select specific carriers, modes, and risk levels to focus your analysis.",
+                target: "#filters",
+                action: () => {
+                    this.highlightElement("#filters");
+                    this.simulateFilterInteraction();
+                },
+                icon: "filter"
+            },
+            {
+                title: "Key Performance Indicators",
+                description: "These KPIs show your freight performance at a glance: total shipments, on-time rate, average delay, savings potential, and CO₂ emissions.",
+                target: "#kpis",
+                action: () => this.highlightElement("#kpis"),
+                icon: "chart"
+            },
+            {
+                title: "AI Insights",
+                description: "Our AI analyzes your data to provide actionable insights about performance trends, risk patterns, and optimization opportunities.",
+                target: "#insights",
+                action: () => this.highlightElement("#insights"),
+                icon: "lightbulb"
+            },
+            {
+                title: "Delay Analysis",
+                description: "This chart shows average delays by carrier, helping you identify which carriers need attention.",
+                target: "#chart-delay-by-carrier",
+                action: () => this.highlightElement("#chart-delay-by-carrier"),
+                icon: "clock"
+            },
+            {
+                title: "Risk Distribution",
+                description: "Monitor your risk profile with this doughnut chart showing the distribution of low, medium, high, and critical risk shipments.",
+                target: "#chart-risk",
+                action: () => this.highlightElement("#chart-risk"),
+                icon: "shield"
+            },
+            {
+                title: "Cost vs Distance Analysis",
+                description: "This scatter plot reveals cost efficiency patterns. Look for outliers that might indicate optimization opportunities.",
+                target: "#chart-cost-distance",
+                action: () => this.highlightElement("#chart-cost-distance"),
+                icon: "trending"
+            },
+            {
+                title: "Emissions Tracking",
+                description: "Track CO₂ emissions by transport mode to support your sustainability goals and identify greener alternatives.",
+                target: "#chart-mode-emissions",
+                action: () => this.highlightElement("#chart-mode-emissions"),
+                icon: "leaf"
+            },
+            {
+                title: "Data Preview",
+                description: "Review your raw data in this table. You can see all shipments with their key attributes and performance metrics.",
+                target: "#table-container",
+                action: () => this.highlightElement("#table-container"),
+                icon: "table"
+            }
+        ];
+        this.isActive = false;
+        this.originalData = null;
+    }
+
+    start() {
+        this.isActive = true;
+        this.currentStep = 0;
+        document.getElementById('walkthrough-overlay').classList.remove('hidden');
+        this.updateStep();
+    }
+
+    stop() {
+        this.isActive = false;
+        document.getElementById('walkthrough-overlay').classList.add('hidden');
+        this.removeSpotlight();
+    }
+
+    next() {
+        if (this.currentStep < this.steps.length - 1) {
+            this.currentStep++;
+            this.updateStep();
+        } else {
+            this.stop();
+        }
+    }
+
+    previous() {
+        if (this.currentStep > 0) {
+            this.currentStep--;
+            this.updateStep();
+        }
+    }
+
+    updateStep() {
+        const step = this.steps[this.currentStep];
+        const overlay = document.getElementById('walkthrough-overlay');
+        const tooltip = document.getElementById('walkthrough-tooltip');
+        const title = document.getElementById('walkthrough-title');
+        const description = document.getElementById('walkthrough-description');
+        const stepCounter = document.getElementById('walkthrough-step');
+        const progress = document.getElementById('walkthrough-progress');
+        const prevBtn = document.getElementById('walkthrough-prev');
+        const nextBtn = document.getElementById('walkthrough-next');
+
+        // Update content
+        title.textContent = step.title;
+        description.textContent = step.description;
+        stepCounter.textContent = `Step ${this.currentStep + 1} of ${this.steps.length}`;
+        progress.style.width = `${((this.currentStep + 1) / this.steps.length) * 100}%`;
+
+        // Update buttons
+        prevBtn.disabled = this.currentStep === 0;
+        nextBtn.textContent = this.currentStep === this.steps.length - 1 ? 'Finish' : 'Next';
+
+        // Execute step action
+        if (step.action) {
+            step.action();
+        }
+
+        // Update icon
+        this.updateIcon(step.icon);
+    }
+
+    updateIcon(iconType) {
+        const iconContainer = document.getElementById('walkthrough-icon');
+        const icons = {
+            upload: `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+            </svg>`,
+            database: `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
+            </svg>`,
+            filter: `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+            </svg>`,
+            chart: `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>`,
+            lightbulb: `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+            </svg>`,
+            clock: `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>`,
+            shield: `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+            </svg>`,
+            trending: `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+            </svg>`,
+            leaf: `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>`,
+            table: `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0V4a1 1 0 011-1h4a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1z"></path>
+            </svg>`
+        };
+        iconContainer.innerHTML = icons[iconType] || icons.upload;
+    }
+
+    highlightElement(selector) {
+        const element = document.querySelector(selector);
+        if (!element) return;
+
+        const rect = element.getBoundingClientRect();
+        const spotlight = document.getElementById('walkthrough-spotlight');
+        const tooltip = document.getElementById('walkthrough-tooltip');
+
+        // Create spotlight effect
+        spotlight.style.background = `
+            radial-gradient(circle at ${rect.left + rect.width/2}px ${rect.top + rect.height/2}px, 
+            transparent 0px, transparent 150px, rgba(0,0,0,0.5) 200px)
+        `;
+
+        // Position tooltip
+        const tooltipRect = tooltip.getBoundingClientRect();
+        let left = rect.left + rect.width/2 - tooltipRect.width/2;
+        let top = rect.bottom + 20;
+
+        // Keep tooltip within viewport
+        if (left < 20) left = 20;
+        if (left + tooltipRect.width > window.innerWidth - 20) {
+            left = window.innerWidth - tooltipRect.width - 20;
+        }
+        if (top + tooltipRect.height > window.innerHeight - 20) {
+            top = rect.top - tooltipRect.height - 20;
+        }
+
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+
+        // Add highlight border to element
+        element.style.outline = '3px solid #3b82f6';
+        element.style.outlineOffset = '2px';
+        element.style.borderRadius = '8px';
+    }
+
+    removeSpotlight() {
+        const spotlight = document.getElementById('walkthrough-spotlight');
+        spotlight.style.background = '';
+        
+        // Remove all highlights
+        document.querySelectorAll('*').forEach(el => {
+            el.style.outline = '';
+            el.style.outlineOffset = '';
+        });
+    }
+
+    simulateDataUpload() {
+        // Simulate clicking upload button
+        const uploadBtn = document.getElementById('btn-upload');
+        if (uploadBtn) {
+            uploadBtn.click();
+        }
+        
+        // Auto-advance after a delay to show the data loading
+        setTimeout(() => {
+            if (this.isActive) {
+                this.next();
+            }
+        }, 2000);
+    }
+
+    populateFilters() {
+        // Populate filter dropdowns with demo data
+        const carrierSelect = document.querySelector('#filters select:nth-of-type(1)');
+        const modeSelect = document.querySelector('#filters select:nth-of-type(2)');
+        const riskSelect = document.querySelector('#filters select:nth-of-type(3)');
+        
+        if (carrierSelect) {
+            carrierSelect.innerHTML = `
+                <option class="bg-white text-gray-900">All Carriers</option>
+                <option class="bg-white text-gray-900">FedEx</option>
+                <option class="bg-white text-gray-900">UPS</option>
+                <option class="bg-white text-gray-900">DHL</option>
+                <option class="bg-white text-gray-900">TNT</option>
+            `;
+        }
+        
+        if (modeSelect) {
+            modeSelect.innerHTML = `
+                <option class="bg-white text-gray-900">All Modes</option>
+                <option class="bg-white text-gray-900">Air</option>
+                <option class="bg-white text-gray-900">Road</option>
+                <option class="bg-white text-gray-900">Rail</option>
+                <option class="bg-white text-gray-900">Sea</option>
+            `;
+        }
+        
+        if (riskSelect) {
+            riskSelect.innerHTML = `
+                <option class="bg-white text-gray-900">All Risk Levels</option>
+                <option class="bg-white text-gray-900">Low</option>
+                <option class="bg-white text-gray-900">Medium</option>
+                <option class="bg-white text-gray-900">High</option>
+                <option class="bg-white text-gray-900">Critical</option>
+            `;
+        }
+    }
+
+    simulateFilterInteraction() {
+        // Simulate user interacting with filters
+        const carrierSelect = document.querySelector('#filters select:nth-of-type(1)');
+        const modeSelect = document.querySelector('#filters select:nth-of-type(2)');
+        
+        if (carrierSelect) {
+            // Simulate selecting a carrier
+            setTimeout(() => {
+                carrierSelect.value = 'FedEx';
+                carrierSelect.dispatchEvent(new Event('change'));
+            }, 500);
+        }
+        
+        if (modeSelect) {
+            // Simulate selecting a mode
+            setTimeout(() => {
+                modeSelect.value = 'Air';
+                modeSelect.dispatchEvent(new Event('change'));
+            }, 1000);
+        }
+    }
+
+    addInteractiveDemo() {
+        // Add click handlers to demonstrate interactivity
+        const kpiCards = document.querySelectorAll('#kpis > div');
+        kpiCards.forEach((card, index) => {
+            card.addEventListener('click', () => {
+                if (this.isActive) {
+                    // Add a subtle animation to show interactivity
+                    card.style.transform = 'scale(1.02)';
+                    card.style.transition = 'transform 0.2s ease';
+                    setTimeout(() => {
+                        card.style.transform = 'scale(1)';
+                    }, 200);
+                }
+            });
+        });
+    }
+}
+
+// Initialize walkthrough system
+const walkthrough = new WalkthroughSystem();
+
 // Load Excel data when page loads
 document.addEventListener('DOMContentLoaded', () => {
     // Load the sample dataset automatically
     loadExcel('./data/Sample_Freight_Dataset.xlsx');
+    
+    // Show welcome message after data loads
+    setTimeout(() => {
+        showWelcomeMessage();
+    }, 3000);
     
     // Override Upload Data button behavior
     const uploadBtn = document.getElementById('btn-upload');
@@ -1209,4 +1689,42 @@ document.addEventListener('DOMContentLoaded', () => {
             showDemoMessage();
         });
     }
+
+    // Walkthrough event listeners
+    document.getElementById('walkthrough-start').addEventListener('click', () => {
+        walkthrough.start();
+    });
+
+    // Add event listener for header tour button
+    document.getElementById('walkthrough-start-header').addEventListener('click', () => {
+        walkthrough.start();
+    });
+
+    document.getElementById('walkthrough-next').addEventListener('click', () => {
+        walkthrough.next();
+    });
+
+    document.getElementById('walkthrough-prev').addEventListener('click', () => {
+        walkthrough.previous();
+    });
+
+    document.getElementById('walkthrough-skip').addEventListener('click', () => {
+        walkthrough.stop();
+    });
+
+    // Keyboard navigation for walkthrough
+    document.addEventListener('keydown', (e) => {
+        if (walkthrough.isActive) {
+            if (e.key === 'ArrowRight' || e.key === 'Enter') {
+                e.preventDefault();
+                walkthrough.next();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                walkthrough.previous();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                walkthrough.stop();
+            }
+        }
+    });
 });
