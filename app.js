@@ -1529,46 +1529,81 @@ class WalkthroughSystem {
 
     highlightElement(selector) {
         const element = document.querySelector(selector);
-        if (!element) return;
+        if (!element) {
+            console.error('Element not found:', selector);
+            return;
+        }
+
+        // Blur any focused child that might affect measurements
+        if (document.activeElement && document.activeElement !== document.body) {
+            document.activeElement.blur();
+        }
 
         const rect = element.getBoundingClientRect();
+        const overlay = document.getElementById('walkthrough-overlay');
         const spotlight = document.getElementById('walkthrough-spotlight');
         const tooltip = document.getElementById('walkthrough-tooltip');
 
-        // Create spotlight effect
-        spotlight.style.background = `
-            radial-gradient(circle at ${rect.left + rect.width/2}px ${rect.top + rect.height/2}px, 
-            transparent 0px, transparent 150px, rgba(0,0,0,0.5) 200px)
-        `;
+        // Ensure overlay itself is transparent; the shadow will provide the dim
+        overlay.style.background = 'transparent';
 
-        // Position tooltip
-        const tooltipRect = tooltip.getBoundingClientRect();
-        let left = rect.left + rect.width/2 - tooltipRect.width/2;
-        let top = rect.bottom + 20;
+        // Rectangle spotlight using box-shadow "cutout"
+        const padding = 24; // tweak as you like (20–40 looks good)
+        const left = Math.max(0, rect.left - padding);
+        const top = Math.max(0, rect.top - padding);
+        const width = Math.min(window.innerWidth, rect.width + padding * 2);
+        const height = Math.min(window.innerHeight, rect.height + padding * 2);
 
-        // Keep tooltip within viewport
-        if (left < 20) left = 20;
-        if (left + tooltipRect.width > window.innerWidth - 20) {
-            left = window.innerWidth - tooltipRect.width - 20;
-        }
-        if (top + tooltipRect.height > window.innerHeight - 20) {
-            top = rect.top - tooltipRect.height - 20;
-        }
+        Object.assign(spotlight.style, {
+            position: 'fixed',
+            left: `${left}px`,
+            top: `${top}px`,
+            width: `${width}px`,
+            height: `${height}px`,
+            borderRadius: '12px',              // rounded rectangle
+            boxShadow: '0 0 0 9999px rgba(0,0,0,0.6)', // dim everything else
+            pointerEvents: 'none',
+            background: 'transparent'          // no gradient
+        });
 
-        tooltip.style.left = `${left}px`;
-        tooltip.style.top = `${top}px`;
-
-        // Add highlight border to element
-        element.style.outline = '3px solid #3b82f6';
+        // Optional: add a thin outline to the target for emphasis
+        element.style.outline = '2px solid #3b82f6';
         element.style.outlineOffset = '2px';
         element.style.borderRadius = '8px';
+
+        // Tooltip positioning (unchanged, but recalculated after spotlight)
+        const tooltipRect = tooltip.getBoundingClientRect();
+        let ttLeft = rect.left + rect.width / 2 - tooltipRect.width / 2;
+        let ttTop = rect.bottom + 20;
+
+        if (ttLeft < 20) ttLeft = 20;
+        if (ttLeft + tooltipRect.width > window.innerWidth - 20) {
+            ttLeft = window.innerWidth - tooltipRect.width - 20;
+        }
+        if (ttTop + tooltipRect.height > window.innerHeight - 20) {
+            ttTop = rect.top - tooltipRect.height - 20;
+        }
+
+        tooltip.style.left = `${ttLeft}px`;
+        tooltip.style.top = `${ttTop}px`;
     }
 
     removeSpotlight() {
         const spotlight = document.getElementById('walkthrough-spotlight');
-        spotlight.style.background = '';
-        
-        // Remove all highlights
+        const overlay = document.getElementById('walkthrough-overlay');
+
+        // Clear spotlight box
+        Object.assign(spotlight.style, {
+            boxShadow: '',
+            width: '0px',
+            height: '0px',
+            background: 'transparent'
+        });
+
+        // Restore overlay default (optional)
+        overlay.style.background = 'rgba(0,0,0,0.5)';
+
+        // Remove outlines
         document.querySelectorAll('*').forEach(el => {
             el.style.outline = '';
             el.style.outlineOffset = '';
