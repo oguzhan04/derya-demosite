@@ -23,6 +23,189 @@ function num(v) {
     return isNaN(n) ? 0 : n;
 }
 
+// Utility functions for data field access
+function getDelayDays(row) {
+    return num(row.actual_delay_days || row.DelayDays || row.delay || row.Delay || 0);
+}
+
+function getCarrier(row) {
+    return row.carrier_name || row.Carrier || row.carrier || 'Unknown';
+}
+
+function getDistance(row) {
+    return num(row.route_distance_km || row.distance_km || row.DistanceKm || 0);
+}
+
+function getCost(row) {
+    return num(row.cost_usd || row.CostUSD || row.cost || 0);
+}
+
+function getShipmentId(row) {
+    return row.shipment_id || row.ShipmentId || row.shipment || row.ID || row.id || row.Reference || row.reference || '-';
+}
+
+function getOrigin(row) {
+    return row.origin_city || row.Origin || row.origin || 'Unknown';
+}
+
+function getDestination(row) {
+    return row.destination_city || row.Destination || row.destination || 'Unknown';
+}
+
+function getTransportMode(row) {
+    return row.transport_mode || row.mode || row.Mode || 'Unknown';
+}
+
+function getWeight(row) {
+    return num(row.weight_kg || row.WeightKg || 0);
+}
+
+// Risk level normalization utility
+function normalizeRiskLevel(riskLevel) {
+    let normalizedRisk = 'Unknown';
+    if (typeof riskLevel === 'string') {
+        const lowerRisk = riskLevel.toLowerCase();
+        if (lowerRisk.includes('low') || lowerRisk === 'l') {
+            normalizedRisk = 'Low';
+        } else if (lowerRisk.includes('medium') || lowerRisk.includes('med') || lowerRisk === 'm') {
+            normalizedRisk = 'Medium';
+        } else if (lowerRisk.includes('high') || lowerRisk === 'h') {
+            normalizedRisk = 'High';
+        } else if (lowerRisk.includes('critical') || lowerRisk.includes('crit')) {
+            normalizedRisk = 'Critical';
+        } else {
+            const riskScore = num(riskLevel);
+            if (!isNaN(riskScore)) {
+                if (riskScore <= 0.3) {
+                    normalizedRisk = 'Low';
+                } else if (riskScore <= 0.6) {
+                    normalizedRisk = 'Medium';
+                } else if (riskScore <= 0.8) {
+                    normalizedRisk = 'High';
+                } else {
+                    normalizedRisk = 'Critical';
+                }
+            } else {
+                normalizedRisk = riskLevel; // Keep original if can't categorize
+            }
+        }
+    } else if (typeof riskLevel === 'number') {
+        if (riskLevel <= 0.3) {
+            normalizedRisk = 'Low';
+        } else if (riskLevel <= 0.6) {
+            normalizedRisk = 'Medium';
+        } else if (riskLevel <= 0.8) {
+            normalizedRisk = 'High';
+        } else {
+            normalizedRisk = 'Critical';
+        }
+    }
+    return normalizedRisk;
+}
+
+// Emissions calculation utility
+function calculateEmissions(row) {
+    let emissionsKg = num(row.emissions_kg || row.EmissionsKg || row.carbon_emissions_kg || 0);
+    
+    if (emissionsKg <= 0) {
+        const factors = { Air: 500, Road: 62, Rail: 22, Sea: 10 };
+        const mode = getTransportMode(row);
+        const distanceKm = getDistance(row);
+        const weightKg = getWeight(row);
+        const tons = weightKg > 0 ? weightKg / 1000 : 1;
+        const factor = factors[mode] || factors.Road;
+        emissionsKg = (distanceKm * factor * tons) / 1000;
+    }
+    
+    return emissionsKg;
+}
+
+// Chart creation utility
+function createChartBase(chartId, chartType, data, options) {
+    // Destroy existing chart if it exists
+    const existingChart = window[chartId + 'Chart'];
+    if (existingChart) {
+        existingChart.destroy();
+        window[chartId + 'Chart'] = null;
+    }
+
+    // Get chart container
+    const ctx = document.getElementById('chart-' + chartId);
+    if (!ctx) {
+        console.error('Chart container not found:', 'chart-' + chartId);
+        return;
+    }
+
+    // Clear any existing content
+    ctx.innerHTML = '';
+
+    // Create new canvas element
+    const canvas = document.createElement('canvas');
+    canvas.id = chartId + '-canvas';
+    ctx.appendChild(canvas);
+
+    // Create the chart
+    window[chartId + 'Chart'] = new Chart(canvas, {
+        type: chartType,
+        data: data,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: false // We'll use the HTML title
+                },
+                legend: {
+                    display: false
+                }
+            },
+            ...options
+        }
+    });
+}
+
+// Popup factory function
+function createPopup(title, content, buttons) {
+    const popup = document.createElement('div');
+    popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    
+    popup.innerHTML = `
+        <div class="bg-white backdrop-blur-md rounded-xl shadow-xl max-w-md mx-4 p-6 transform transition-all border border-gray-200">
+            <div class="flex items-center mb-4">
+                <div class="flex-shrink-0">
+                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-lg font-semibold text-gray-900">${title}</h3>
+                </div>
+            </div>
+            <div class="mb-6">
+                ${content}
+            </div>
+            <div class="flex justify-between">
+                ${buttons}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(popup);
+    
+    // Add escape key handling
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            document.body.removeChild(popup);
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+    
+    return popup;
+}
+
 // Helper function to compute savings potential from late shipments
 function computeSavingsPotential(rows) {
     if (!rows || rows.length === 0) {
@@ -30,7 +213,7 @@ function computeSavingsPotential(rows) {
     }
 
     const totalSavings = rows.reduce((sum, row) => {
-        const delayDays = num(row.DelayDays || row.delay_days || row.delay || row.Delay || 0);
+        const delayDays = getDelayDays(row);
         return sum + (delayDays > 0 ? delayDays * COST_PER_DELAY_DAY : 0);
     }, 0);
 
@@ -49,9 +232,8 @@ function updateKPIs(rows) {
     document.getElementById('kpi-total-shipments').textContent = totalShipments;
 
     // On-Time % = % of rows where DelayDays <= 0
-    // Assuming the delay field is named 'actual_delay_days' or similar
     const onTimeRows = rows.filter(row => {
-        const delayDays = num(row.actual_delay_days || row.DelayDays || 0);
+        const delayDays = getDelayDays(row);
         return delayDays <= 0;
     });
     const onTimePercentage = ((onTimeRows.length / totalShipments) * 100).toFixed(1);
@@ -59,13 +241,13 @@ function updateKPIs(rows) {
 
     // Avg Delay = average of DelayDays (only for late shipments)
     const lateShipments = rows.filter(row => {
-        const delayDays = num(row.actual_delay_days || row.DelayDays || 0);
+        const delayDays = getDelayDays(row);
         return delayDays > 0;
     });
     
     if (lateShipments.length > 0) {
         const totalDelay = lateShipments.reduce((sum, row) => {
-            return sum + num(row.actual_delay_days || row.DelayDays || 0);
+            return sum + getDelayDays(row);
         }, 0);
         const avgDelay = (totalDelay / lateShipments.length).toFixed(1);
         document.getElementById('kpi-avg-delay').textContent = `${avgDelay} days`;
@@ -85,7 +267,7 @@ function updateKPIs(rows) {
     console.log('KPIs updated:', {
         totalShipments,
         onTimePercentage: `${onTimePercentage}%`,
-        avgDelay: lateShipments.length > 0 ? `${(lateShipments.reduce((sum, row) => sum + num(row.actual_delay_days || row.DelayDays || 0), 0) / lateShipments.length).toFixed(1)} days` : '0 days'
+        avgDelay: lateShipments.length > 0 ? `${(lateShipments.reduce((sum, row) => sum + getDelayDays(row), 0) / lateShipments.length).toFixed(1)} days` : '0 days'
     });
 }
 
@@ -100,8 +282,8 @@ function createDelayByCarrierChart(rows) {
     const carrierData = {};
     
     rows.forEach(row => {
-        const carrier = row.carrier_name || row.Carrier || row.carrier || 'Unknown';
-        const delayDays = num(row.actual_delay_days || row.DelayDays || 0);
+        const carrier = getCarrier(row);
+        const delayDays = getDelayDays(row);
         
         if (!carrierData[carrier]) {
             carrierData[carrier] = {
@@ -129,78 +311,43 @@ function createDelayByCarrierChart(rows) {
         return;
     }
 
-    // Destroy existing chart if it exists
-    if (delayByCarrierChart) {
-        delayByCarrierChart.destroy();
-        delayByCarrierChart = null;
-    }
-
-    // Get chart container
-    const ctx = document.getElementById('chart-delay-by-carrier');
-    if (!ctx) {
-        console.error('Chart container not found');
-        return;
-    }
-
-    // Clear any existing content
-    ctx.innerHTML = '';
-
-    // Create new canvas element
-    const canvas = document.createElement('canvas');
-    canvas.id = 'delay-by-carrier-canvas';
-    ctx.appendChild(canvas);
-
-    // Create the chart
-    delayByCarrierChart = new Chart(canvas, {
-        type: 'bar',
-        data: {
-            labels: filteredCarriers.map(carrier => carrier.name),
-            datasets: [{
-                label: 'Avg Delay (days)',
-                data: filteredCarriers.map(carrier => carrier.avgDelay.toFixed(1)),
-                backgroundColor: 'rgba(30, 58, 138, 0.8)', // Dark blue color
-                borderColor: 'rgba(30, 58, 138, 1)',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
+    // Create the chart using the base function
+    createChartBase('delay-by-carrier', 'bar', {
+        labels: filteredCarriers.map(carrier => carrier.name),
+        datasets: [{
+            label: 'Avg Delay (days)',
+            data: filteredCarriers.map(carrier => carrier.avgDelay.toFixed(1)),
+            backgroundColor: 'rgba(30, 58, 138, 0.8)', // Dark blue color
+            borderColor: 'rgba(30, 58, 138, 1)',
+            borderWidth: 2
+        }]
+    }, {
+        scales: {
+            y: {
+                beginAtZero: true,
                 title: {
-                    display: false // We'll use the HTML title
+                    display: true,
+                    text: 'Avg Delay (days)',
+                    color: 'rgba(55, 65, 81, 0.8)'
                 },
-                legend: {
-                    display: false
+                ticks: {
+                    color: 'rgba(55, 65, 81, 0.7)'
+                },
+                grid: {
+                    color: 'rgba(55, 65, 81, 0.1)'
                 }
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Avg Delay (days)',
-                        color: 'rgba(55, 65, 81, 0.8)'
-                    },
-                    ticks: {
-                        color: 'rgba(55, 65, 81, 0.7)'
-                    },
-                    grid: {
-                        color: 'rgba(55, 65, 81, 0.1)'
-                    }
+            x: {
+                title: {
+                    display: true,
+                    text: 'Carrier',
+                    color: 'rgba(55, 65, 81, 0.8)'
                 },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Carrier',
-                        color: 'rgba(55, 65, 81, 0.8)'
-                    },
-                    ticks: {
-                        color: 'rgba(55, 65, 81, 0.7)'
-                    },
-                    grid: {
-                        color: 'rgba(55, 65, 81, 0.1)'
-                    }
+                ticks: {
+                    color: 'rgba(55, 65, 81, 0.7)'
+                },
+                grid: {
+                    color: 'rgba(55, 65, 81, 0.1)'
                 }
             }
         }
@@ -221,49 +368,7 @@ function createRiskDistributionChart(rows) {
     
     rows.forEach(row => {
         const riskLevel = row.risk_level || row.RiskLevel || row.risk || row.ai_risk_score || 'Unknown';
-        
-        // Normalize risk level to standard format
-        let normalizedRisk = 'Unknown';
-        if (typeof riskLevel === 'string') {
-            const lowerRisk = riskLevel.toLowerCase();
-            if (lowerRisk.includes('low') || lowerRisk === 'l') {
-                normalizedRisk = 'Low';
-            } else if (lowerRisk.includes('medium') || lowerRisk.includes('med') || lowerRisk === 'm') {
-                normalizedRisk = 'Medium';
-            } else if (lowerRisk.includes('high') || lowerRisk === 'h') {
-                normalizedRisk = 'High';
-            } else if (lowerRisk.includes('critical') || lowerRisk.includes('crit')) {
-                normalizedRisk = 'Critical';
-            } else {
-                // Try to categorize by numeric risk score
-                const riskScore = num(riskLevel);
-                if (!isNaN(riskScore)) {
-                    if (riskScore <= 0.3) {
-                        normalizedRisk = 'Low';
-                    } else if (riskScore <= 0.6) {
-                        normalizedRisk = 'Medium';
-                    } else if (riskScore <= 0.8) {
-                        normalizedRisk = 'High';
-                    } else {
-                        normalizedRisk = 'Critical';
-                    }
-                } else {
-                    normalizedRisk = riskLevel; // Keep original if can't categorize
-                }
-            }
-        } else if (typeof riskLevel === 'number') {
-            // Numeric risk score
-            if (riskLevel <= 0.3) {
-                normalizedRisk = 'Low';
-            } else if (riskLevel <= 0.6) {
-                normalizedRisk = 'Medium';
-            } else if (riskLevel <= 0.8) {
-                normalizedRisk = 'High';
-            } else {
-                normalizedRisk = 'Critical';
-            }
-        }
-        
+        const normalizedRisk = normalizeRiskLevel(riskLevel);
         riskCounts[normalizedRisk] = (riskCounts[normalizedRisk] || 0) + 1;
     });
 
@@ -289,58 +394,28 @@ function createRiskDistributionChart(rows) {
 
     const colors = labels.map(riskLevel => getRiskColor(riskLevel));
 
-    // Destroy existing chart if it exists
-    if (riskDistributionChart) {
-        riskDistributionChart.destroy();
-        riskDistributionChart = null;
-    }
-
-    // Get chart container
-    const ctx = document.getElementById('chart-risk');
-    if (!ctx) {
-        console.error('Risk chart container not found');
-        return;
-    }
-
-    // Clear any existing content
-    ctx.innerHTML = '';
-
-    // Create new canvas element
-    const canvas = document.createElement('canvas');
-    canvas.id = 'risk-distribution-canvas';
-    ctx.appendChild(canvas);
-
-    // Create the doughnut chart
-    riskDistributionChart = new Chart(canvas, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: data,
-                backgroundColor: colors,
-                borderColor: colors.map(color => color),
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: false // We'll use the HTML title
-                },
-                legend: {
-                    display: true,
-                    position: 'bottom',
-                    labels: {
-                        padding: 20,
-                        usePointStyle: true,
-                        color: 'rgba(55, 65, 81, 0.8)'
-                    }
+    // Create the doughnut chart using the base function
+    createChartBase('risk', 'doughnut', {
+        labels: labels,
+        datasets: [{
+            data: data,
+            backgroundColor: colors,
+            borderColor: colors.map(color => color),
+            borderWidth: 2
+        }]
+    }, {
+        plugins: {
+            legend: {
+                display: true,
+                position: 'bottom',
+                labels: {
+                    padding: 20,
+                    usePointStyle: true,
+                    color: 'rgba(55, 65, 81, 0.8)'
                 }
-            },
-            cutout: '60%' // Makes it a doughnut instead of pie
-        }
+            }
+        },
+        cutout: '60%' // Makes it a doughnut instead of pie
     });
 
     console.log('Risk distribution chart created:', { labels, data, riskCounts });
@@ -355,9 +430,9 @@ function createCostDistanceChart(rows) {
 
     // Build array of points { x: distanceKm, y: costUSD, shipmentId }
     const scatterData = rows.map(row => {
-        const distanceKm = num(row.route_distance_km || row.DistanceKm || row.distance_km || 0);
-        const costUSD = num(row.cost_usd || row.CostUSD || row.cost || 0);
-        const shipmentId = row.shipment_id || row.ShipmentId || row.shipment || 'Unknown';
+        const distanceKm = getDistance(row);
+        const costUSD = getCost(row);
+        const shipmentId = getShipmentId(row);
         
         return {
             x: distanceKm,
@@ -371,96 +446,63 @@ function createCostDistanceChart(rows) {
         return;
     }
 
-    // Destroy existing chart if it exists
-    if (costDistanceChart) {
-        costDistanceChart.destroy();
-        costDistanceChart = null;
-    }
-
-    // Get chart container
-    const ctx = document.getElementById('chart-cost-distance');
-    if (!ctx) {
-        console.error('Cost vs distance chart container not found');
-        return;
-    }
-
-    // Clear any existing content
-    ctx.innerHTML = '';
-
-    // Create new canvas element
-    const canvas = document.createElement('canvas');
-    canvas.id = 'cost-distance-canvas';
-    ctx.appendChild(canvas);
-
-    // Create the scatter chart
-    costDistanceChart = new Chart(canvas, {
-        type: 'scatter',
-        data: {
-            datasets: [{
-                label: 'Shipments',
-                data: scatterData,
-                backgroundColor: 'rgba(30, 58, 138, 0.7)', // Semi-transparent dark blue
-                borderColor: 'rgba(30, 58, 138, 0.8)',
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                pointHoverBackgroundColor: 'rgba(30, 58, 138, 0.9)',
-                pointHoverBorderColor: 'rgba(30, 58, 138, 1)',
-                pointHoverBorderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: false // We'll use the HTML title
-                },
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const point = context.raw;
-                            return `Shipment: ${point.shipmentId}\nDistance: ${point.x.toLocaleString()} km\nCost: $${point.y.toLocaleString()}`;
-                        }
+    // Create the scatter chart using the base function
+    createChartBase('cost-distance', 'scatter', {
+        datasets: [{
+            label: 'Shipments',
+            data: scatterData,
+            backgroundColor: 'rgba(30, 58, 138, 0.7)', // Semi-transparent dark blue
+            borderColor: 'rgba(30, 58, 138, 0.8)',
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointHoverBackgroundColor: 'rgba(30, 58, 138, 0.9)',
+            pointHoverBorderColor: 'rgba(30, 58, 138, 1)',
+            pointHoverBorderWidth: 2
+        }]
+    }, {
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const point = context.raw;
+                        return `Shipment: ${point.shipmentId}\nDistance: ${point.x.toLocaleString()} km\nCost: $${point.y.toLocaleString()}`;
                     }
                 }
-            },
-            scales: {
-                x: {
-                    type: 'linear',
-                    position: 'bottom',
-                    title: {
-                        display: true,
-                        text: 'Distance (km)',
-                        color: 'rgba(55, 65, 81, 0.8)'
-                    },
-                    ticks: {
-                        color: 'rgba(55, 65, 81, 0.7)',
-                        callback: function(value) {
-                            return value.toLocaleString();
-                        }
-                    },
-                    grid: {
-                        color: 'rgba(55, 65, 81, 0.1)'
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                position: 'bottom',
+                title: {
+                    display: true,
+                    text: 'Distance (km)',
+                    color: 'rgba(55, 65, 81, 0.8)'
+                },
+                ticks: {
+                    color: 'rgba(55, 65, 81, 0.7)',
+                    callback: function(value) {
+                        return value.toLocaleString();
                     }
                 },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Cost (USD)',
-                        color: 'rgba(55, 65, 81, 0.8)'
-                    },
-                    ticks: {
-                        color: 'rgba(55, 65, 81, 0.7)',
-                        callback: function(value) {
-                            return '$' + value.toLocaleString();
-                        }
-                    },
-                    grid: {
-                        color: 'rgba(55, 65, 81, 0.1)'
+                grid: {
+                    color: 'rgba(55, 65, 81, 0.1)'
+                }
+            },
+            y: {
+                title: {
+                    display: true,
+                    text: 'Cost (USD)',
+                    color: 'rgba(55, 65, 81, 0.8)'
+                },
+                ticks: {
+                    color: 'rgba(55, 65, 81, 0.7)',
+                    callback: function(value) {
+                        return '$' + value.toLocaleString();
                     }
+                },
+                grid: {
+                    color: 'rgba(55, 65, 81, 0.1)'
                 }
             }
         }
@@ -620,23 +662,10 @@ function createModeEmissionsChart(rows) {
 
     rows.forEach(row => {
         // Get transport mode
-        const mode = row.transport_mode || row.mode || row.Mode || 'Unknown';
+        const mode = getTransportMode(row);
         
-        // Get actual emissions if available
-        let emissionsKg = num(row.emissions_kg || row.EmissionsKg || row.carbon_emissions_kg || 0);
-        
-        // If no actual emissions data, estimate using demo factors
-        if (emissionsKg <= 0) {
-            const distanceKm = num(row.route_distance_km || row.distance_km || row.DistanceKm || 0);
-            const weightKg = num(row.weight_kg || row.WeightKg || 0);
-            const tons = weightKg > 0 ? weightKg / 1000 : 1; // Assume 1 ton if no weight data
-            
-            // Get factor for this mode (default to Road if unknown)
-            const factor = factors[mode] || factors.Road;
-            
-            // Calculate: (distance_km * factor_g_per_tkm * tons) / 1000
-            emissionsKg = (distanceKm * factor * tons) / 1000;
-        }
+        // Calculate emissions using utility function
+        const emissionsKg = calculateEmissions(row);
 
         // Aggregate by mode
         if (!modeEmissions[mode]) {
@@ -655,81 +684,46 @@ function createModeEmissionsChart(rows) {
         return;
     }
 
-    // Destroy existing chart if it exists
-    if (modeEmissionsChart) {
-        modeEmissionsChart.destroy();
-        modeEmissionsChart = null;
-    }
-
-    // Get chart container
-    const ctx = document.getElementById('chart-mode-emissions');
-    if (!ctx) {
-        console.error('Mode emissions chart container not found');
-        return;
-    }
-
-    // Clear any existing content
-    ctx.innerHTML = '';
-
-    // Create new canvas element
-    const canvas = document.createElement('canvas');
-    canvas.id = 'mode-emissions-canvas';
-    ctx.appendChild(canvas);
-
-    // Create the bar chart
-    modeEmissionsChart = new Chart(canvas, {
-        type: 'bar',
-        data: {
-            labels: modes,
-            datasets: [{
-                label: 'CO₂ (kg)',
-                data: emissions,
-                backgroundColor: 'rgba(30, 58, 138, 0.8)', // Dark blue color for emissions
-                borderColor: 'rgba(30, 58, 138, 1)',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
+    // Create the bar chart using the base function
+    createChartBase('mode-emissions', 'bar', {
+        labels: modes,
+        datasets: [{
+            label: 'CO₂ (kg)',
+            data: emissions,
+            backgroundColor: 'rgba(30, 58, 138, 0.8)', // Dark blue color for emissions
+            borderColor: 'rgba(30, 58, 138, 1)',
+            borderWidth: 2
+        }]
+    }, {
+        scales: {
+            y: {
+                beginAtZero: true,
                 title: {
-                    display: false // We'll use the HTML title
+                    display: true,
+                    text: 'CO₂ (kg)',
+                    color: 'rgba(55, 65, 81, 0.8)'
                 },
-                legend: {
-                    display: false
+                ticks: {
+                    color: 'rgba(55, 65, 81, 0.7)',
+                    callback: function(value) {
+                        return value.toLocaleString() + ' kg';
+                    }
+                },
+                grid: {
+                    color: 'rgba(55, 65, 81, 0.1)'
                 }
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'CO₂ (kg)',
-                        color: 'rgba(55, 65, 81, 0.8)'
-                    },
-                    ticks: {
-                        color: 'rgba(55, 65, 81, 0.7)',
-                        callback: function(value) {
-                            return value.toLocaleString() + ' kg';
-                        }
-                    },
-                    grid: {
-                        color: 'rgba(55, 65, 81, 0.1)'
-                    }
+            x: {
+                title: {
+                    display: true,
+                    text: 'Mode',
+                    color: 'rgba(55, 65, 81, 0.8)'
                 },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Mode',
-                        color: 'rgba(55, 65, 81, 0.8)'
-                    },
-                    ticks: {
-                        color: 'rgba(55, 65, 81, 0.7)'
-                    },
-                    grid: {
-                        color: 'rgba(55, 65, 81, 0.1)'
-                    }
+                ticks: {
+                    color: 'rgba(55, 65, 81, 0.7)'
+                },
+                grid: {
+                    color: 'rgba(55, 65, 81, 0.1)'
                 }
             }
         }
@@ -757,8 +751,8 @@ function renderInsights(rows) {
     // 1. Worst average delay by carrier
     const carrierDelays = {};
     rows.forEach(row => {
-        const carrier = row.carrier_name || row.Carrier || row.carrier || 'Unknown';
-        const delayDays = num(row.actual_delay_days || row.DelayDays || 0);
+        const carrier = getCarrier(row);
+        const delayDays = getDelayDays(row);
         
         if (delayDays > 0) { // Only count actual delays
             if (!carrierDelays[carrier]) {
@@ -783,7 +777,7 @@ function renderInsights(rows) {
     
     // 2. On-time rate (reuse KPI calculation)
     const onTimeRows = rows.filter(row => {
-        const delayDays = num(row.actual_delay_days || row.DelayDays || 0);
+        const delayDays = getDelayDays(row);
         return delayDays <= 0;
     });
     const onTimeRate = ((onTimeRows.length / rows.length) * 100).toFixed(1);
@@ -793,45 +787,7 @@ function renderInsights(rows) {
     const riskCounts = {};
     rows.forEach(row => {
         const riskLevel = row.risk_level || row.RiskLevel || row.risk || row.ai_risk_score || 'Unknown';
-        
-        // Normalize risk level (reuse logic from risk chart)
-        let normalizedRisk = 'Unknown';
-        if (typeof riskLevel === 'string') {
-            const lowerRisk = riskLevel.toLowerCase();
-            if (lowerRisk.includes('low') || lowerRisk === 'l') {
-                normalizedRisk = 'Low';
-            } else if (lowerRisk.includes('medium') || lowerRisk.includes('med') || lowerRisk === 'm') {
-                normalizedRisk = 'Medium';
-            } else if (lowerRisk.includes('high') || lowerRisk === 'h') {
-                normalizedRisk = 'High';
-            } else if (lowerRisk.includes('critical') || lowerRisk.includes('crit')) {
-                normalizedRisk = 'Critical';
-            } else {
-                const riskScore = num(riskLevel);
-                if (!isNaN(riskScore)) {
-                    if (riskScore <= 0.3) {
-                        normalizedRisk = 'Low';
-                    } else if (riskScore <= 0.6) {
-                        normalizedRisk = 'Medium';
-                    } else if (riskScore <= 0.8) {
-                        normalizedRisk = 'High';
-                    } else {
-                        normalizedRisk = 'Critical';
-                    }
-                }
-            }
-        } else if (typeof riskLevel === 'number') {
-            if (riskLevel <= 0.3) {
-                normalizedRisk = 'Low';
-            } else if (riskLevel <= 0.6) {
-                normalizedRisk = 'Medium';
-            } else if (riskLevel <= 0.8) {
-                normalizedRisk = 'High';
-            } else {
-                normalizedRisk = 'Critical';
-            }
-        }
-        
+        const normalizedRisk = normalizeRiskLevel(riskLevel);
         riskCounts[normalizedRisk] = (riskCounts[normalizedRisk] || 0) + 1;
     });
     
@@ -843,8 +799,8 @@ function renderInsights(rows) {
     
     // 4. Cost-distance correlation
     const validPoints = rows.map(row => {
-        const distance = num(row.route_distance_km || row.distance_km || row.DistanceKm || 0);
-        const cost = num(row.cost_usd || row.CostUSD || row.cost || 0);
+        const distance = getDistance(row);
+        const cost = getCost(row);
         return { distance, cost };
     }).filter(point => point.distance > 0 && point.cost > 0);
     
@@ -859,24 +815,13 @@ function renderInsights(rows) {
     
     // 5. Top route by emissions
     const routeEmissions = {};
-    const factors = { Air: 500, Road: 62, Rail: 22, Sea: 10 };
     
     rows.forEach(row => {
-        const origin = row.origin_city || row.Origin || 'Unknown';
-        const destination = row.destination_city || row.Destination || 'Unknown';
+        const origin = getOrigin(row);
+        const destination = getDestination(row);
         const route = `${origin} → ${destination}`;
         
-        let emissionsKg = num(row.emissions_kg || row.EmissionsKg || row.carbon_emissions_kg || 0);
-        
-        if (emissionsKg <= 0) {
-            const mode = row.transport_mode || row.mode || row.Mode || 'Road';
-            const distanceKm = num(row.route_distance_km || row.distance_km || row.DistanceKm || 0);
-            const weightKg = num(row.weight_kg || row.WeightKg || 0);
-            const tons = weightKg > 0 ? weightKg / 1000 : 1;
-            const factor = factors[mode] || factors.Road;
-            emissionsKg = (distanceKm * factor * tons) / 1000;
-        }
-        
+        const emissionsKg = calculateEmissions(row);
         routeEmissions[route] = (routeEmissions[route] || 0) + emissionsKg;
     });
     
@@ -951,11 +896,11 @@ function renderOutliersAndAnomalies(rows) {
     // 1. Top 5 late shipments
     const lateShipments = rows
         .map(row => {
-            const delayDays = num(row.DelayDays || row.delay_days || row.delay || row.Delay || 0);
-            const shipmentId = row.ID || row.id || row.Reference || row.reference || '-';
-            const carrier = row.Carrier || row.carrier || 'Unknown';
-            const origin = row.Origin || row.origin || row.origin_city || 'Unknown';
-            const destination = row.Destination || row.destination || row.destination_city || 'Unknown';
+            const delayDays = getDelayDays(row);
+            const shipmentId = getShipmentId(row);
+            const carrier = getCarrier(row);
+            const origin = getOrigin(row);
+            const destination = getDestination(row);
             const lane = `${origin} → ${destination}`;
 
             return {
@@ -1010,7 +955,7 @@ function renderOutliersAndAnomalies(rows) {
             const parsedDate = dayjs(dateField);
             if (parsedDate.isValid()) {
                 const weekKey = parsedDate.format('GGGG-[W]WW');
-                const delayDays = num(row.DelayDays || row.delay_days || row.delay || row.Delay || 0);
+                const delayDays = getDelayDays(row);
                 
                 if (!weeklyData[weekKey]) {
                     weeklyData[weekKey] = { total: 0, onTime: 0 };
@@ -1218,50 +1163,32 @@ async function loadExcel(url) {
 
 // Function to show welcome message
 function showWelcomeMessage() {
-    const welcomePopup = document.createElement('div');
-    welcomePopup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-    welcomePopup.innerHTML = `
-        <div class="bg-white backdrop-blur-md rounded-xl shadow-xl max-w-md mx-4 p-6 transform transition-all border border-gray-200">
-            <div class="flex items-center mb-4">
-                <div class="flex-shrink-0">
-                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                    </div>
-                </div>
-                <div class="ml-3">
-                    <h3 class="text-lg font-semibold text-gray-900">Welcome to Derya AI Freight!</h3>
-                </div>
-            </div>
-            <div class="mb-6">
-                <p class="text-sm text-gray-700 mb-4">
-                    🚀 Your freight data has been loaded and analyzed! 
-                </p>
-                <p class="text-sm text-gray-700">
-                    Take a guided tour to learn about all the features and insights available in your dashboard.
-                </p>
-            </div>
-            <div class="flex justify-between">
-                <button id="skip-welcome" class="px-4 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors">
-                    Skip Tour
-                </button>
-                <button id="start-walkthrough" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200">
-                    Start Tour
-                </button>
-            </div>
-        </div>
+    const content = `
+        <p class="text-sm text-gray-700 mb-4">
+            🚀 Your freight data has been loaded and analyzed! 
+        </p>
+        <p class="text-sm text-gray-700">
+            Take a guided tour to learn about all the features and insights available in your dashboard.
+        </p>
     `;
     
-    // Add to page
-    document.body.appendChild(welcomePopup);
+    const buttons = `
+        <button id="skip-welcome" class="px-4 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors">
+            Skip Tour
+        </button>
+        <button id="start-walkthrough" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200">
+            Start Tour
+        </button>
+    `;
+    
+    const popup = createPopup('Welcome to Derya AI Freight!', content, buttons);
     
     // Add event listeners
-    const skipBtn = welcomePopup.querySelector('#skip-welcome');
-    const startBtn = welcomePopup.querySelector('#start-walkthrough');
+    const skipBtn = popup.querySelector('#skip-welcome');
+    const startBtn = popup.querySelector('#start-walkthrough');
     
     const closeWelcome = () => {
-        document.body.removeChild(welcomePopup);
+        document.body.removeChild(popup);
     };
     
     skipBtn.addEventListener('click', closeWelcome);
@@ -1269,51 +1196,23 @@ function showWelcomeMessage() {
         closeWelcome();
         walkthrough.start();
     });
-    
-    // Close on Escape key
-    const handleEscape = (e) => {
-        if (e.key === 'Escape') {
-            closeWelcome();
-            document.removeEventListener('keydown', handleEscape);
-        }
-    };
-    document.addEventListener('keydown', handleEscape);
 }
 
 // Function to show demo message
 function showDemoMessage() {
-    // Create a Tailwind-styled popup
-    const popup = document.createElement('div');
-    popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-    popup.innerHTML = `
-        <div class="bg-white backdrop-blur-md rounded-xl shadow-xl max-w-md mx-4 p-6 transform transition-all border border-gray-200">
-            <div class="flex items-center mb-4">
-                <div class="flex-shrink-0">
-                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                    </div>
-                </div>
-                <div class="ml-3">
-                    <h3 class="text-lg font-semibold text-gray-900">Demo Mode</h3>
-                </div>
-            </div>
-            <div class="mb-6">
-                <p class="text-sm text-gray-700">
-                    ✨ This is a demo :) The sample dataset will be used automatically.
-                </p>
-            </div>
-            <div class="flex justify-end">
-                <button id="close-demo-popup" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200">
-                    Got it!
-                </button>
-            </div>
-        </div>
+    const content = `
+        <p class="text-sm text-gray-700">
+            ✨ This is a demo :) The sample dataset will be used automatically.
+        </p>
     `;
     
-    // Add to page
-    document.body.appendChild(popup);
+    const buttons = `
+        <button id="close-demo-popup" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200">
+            Got it!
+        </button>
+    `;
+    
+    const popup = createPopup('Demo Mode', content, buttons);
     
     // Add close functionality
     const closeBtn = popup.querySelector('#close-demo-popup');
@@ -1327,15 +1226,91 @@ function showDemoMessage() {
             closePopup();
         }
     });
-    
-    // Close on Escape key
-    const handleEscape = (e) => {
-        if (e.key === 'Escape') {
-            closePopup();
-            document.removeEventListener('keydown', handleEscape);
-        }
+}
+
+// ---- Scroll helpers ----
+const SCROLL_APPLIES_FROM_STEP = 6;
+const FIXED_HEADER_SELECTOR = '#topbar, .topbar, header'; // adjust if needed
+
+function getHeaderHeight() {
+  const candidates = document.querySelectorAll('#topbar, .topbar, header, nav');
+  for (const el of candidates) {
+    const cs = window.getComputedStyle(el);
+    if (cs.position === 'fixed' || cs.position === 'sticky') {
+      return el.getBoundingClientRect().height || 0;
+    }
+  }
+  return 0; // navbar is static in this project
+}
+
+function isFixedOrSticky(el) {
+  const cs = window.getComputedStyle(el);
+  return cs.position === 'fixed' || cs.position === 'sticky';
+}
+
+function isTopBarElement(el) {
+  // Treat fixed/sticky elements that sit at the top as "top bar" (don't scroll/center them)
+  if (!isFixedOrSticky(el)) return false;
+  const rect = el.getBoundingClientRect();
+  return rect.top <= getHeaderHeight() + 2; // within header band
+}
+
+function isFullyInView(el, {padding = 16} = {}) {
+  const rect = el.getBoundingClientRect();
+  const headerH = getHeaderHeight();
+  const vTop = headerH + padding;                 // exclude header area
+  const vBottom = window.innerHeight - padding;
+  return rect.top >= vTop && rect.bottom <= vBottom;
+}
+
+function scrollIntoViewCentered(el, { smooth = true } = {}) {
+  return new Promise(resolve => {
+    const rect = el.getBoundingClientRect();
+    const headerH = getHeaderHeight();
+    const padding = 16;
+
+    const usableHeight = window.innerHeight - headerH - padding * 2;
+    let targetTopPx;
+
+    if (rect.height > usableHeight) {
+      // Tall target: place top just below the viewport top (no fudge)
+      targetTopPx = window.scrollY + rect.top - (headerH + padding);
+    } else {
+      // Center: middle of viewport, accounting for header only if fixed/sticky
+      const centerOffset = (window.innerHeight - rect.height) / 2;
+      targetTopPx = window.scrollY + rect.top - centerOffset - headerH;
+    }
+
+    // Clamp
+    const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    const top = Math.max(0, Math.min(targetTopPx, maxScroll));
+
+    const behavior = smooth ? 'smooth' : 'auto';
+
+    // If we're already there, resolve immediately
+    const delta = Math.abs(window.scrollY - top);
+    if (delta < 2) return resolve();
+
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(); } };
+
+    // Distance-based fallback timeout for smooth; immediate for instant
+    const fallbackMs = smooth ? Math.min(800, Math.max(250, Math.round(delta / 2))) : 0;
+    const timer = setTimeout(finish, fallbackMs);
+
+    const onScrollEnd = () => {
+      window.removeEventListener('scrollend', onScrollEnd);
+      clearTimeout(timer);
+      finish();
     };
-    document.addEventListener('keydown', handleEscape);
+    try {
+      window.addEventListener('scrollend', onScrollEnd, { once: true });
+    } catch {
+      // Older browsers: fallback timer handles completion
+    }
+
+    window.scrollTo({ top, left: 0, behavior });
+  });
 }
 
 // Walkthrough system
@@ -1347,7 +1322,7 @@ class WalkthroughSystem {
                 title: "Welcome to Derya AI Freight",
                 description: "This dashboard helps you analyze freight data and identify optimization opportunities. Let's start by exploring the data upload feature.",
                 target: "#btn-upload",
-                action: () => this.highlightElement("#btn-upload"),
+                action: () => this.highlightElement("#btn-upload", { stepIndex: 1 }),
                 icon: "upload"
             },
             {
@@ -1362,7 +1337,7 @@ class WalkthroughSystem {
                 description: "Use these filters to narrow down your analysis by date range, carrier, transport mode, and risk level. Let me show you how they work.",
                 target: "#filters",
                 action: () => {
-                    this.highlightElement("#filters");
+                    this.highlightElement("#filters", { stepIndex: 3 });
                     this.populateFilters();
                 },
                 icon: "filter"
@@ -1372,7 +1347,7 @@ class WalkthroughSystem {
                 description: "Watch as I demonstrate filter interactions. You can select specific carriers, modes, and risk levels to focus your analysis.",
                 target: "#filters",
                 action: () => {
-                    this.highlightElement("#filters");
+                    this.highlightElement("#filters", { stepIndex: 4 });
                     this.simulateFilterInteraction();
                 },
                 icon: "filter"
@@ -1381,49 +1356,53 @@ class WalkthroughSystem {
                 title: "Key Performance Indicators",
                 description: "These KPIs show your freight performance at a glance: total shipments, on-time rate, average delay, savings potential, and CO₂ emissions.",
                 target: "#kpis",
-                action: () => this.highlightElement("#kpis"),
+                action: () => this.highlightElement("#kpis", { stepIndex: 5 }),
                 icon: "chart"
             },
             {
                 title: "AI Insights",
                 description: "Our AI analyzes your data to provide actionable insights about performance trends, risk patterns, and optimization opportunities.",
                 target: "#insights",
-                action: () => this.highlightElement("#insights"),
+                action: () => this.highlightElement("#insights", { stepIndex: 6 }),
                 icon: "lightbulb"
             },
             {
                 title: "Delay Analysis",
                 description: "This chart shows average delays by carrier, helping you identify which carriers need attention.",
                 target: "#chart-delay-by-carrier",
-                action: () => this.highlightElement("#chart-delay-by-carrier"),
+                useParentCard: true,
+                action: () => this.highlightElement("#chart-delay-by-carrier", { stepIndex: 7, useParentCard: true }),
                 icon: "clock"
             },
             {
                 title: "Risk Distribution",
                 description: "Monitor your risk profile with this doughnut chart showing the distribution of low, medium, high, and critical risk shipments.",
                 target: "#chart-risk",
-                action: () => this.highlightElement("#chart-risk"),
+                useParentCard: true,
+                action: () => this.highlightElement("#chart-risk", { stepIndex: 8, useParentCard: true }),
                 icon: "shield"
             },
             {
                 title: "Cost vs Distance Analysis",
                 description: "This scatter plot reveals cost efficiency patterns. Look for outliers that might indicate optimization opportunities.",
                 target: "#chart-cost-distance",
-                action: () => this.highlightElement("#chart-cost-distance"),
+                useParentCard: true,
+                action: () => this.highlightElement("#chart-cost-distance", { stepIndex: 9, useParentCard: true }),
                 icon: "trending"
             },
             {
                 title: "Emissions Tracking",
                 description: "Track CO₂ emissions by transport mode to support your sustainability goals and identify greener alternatives.",
                 target: "#chart-mode-emissions",
-                action: () => this.highlightElement("#chart-mode-emissions"),
+                useParentCard: true,
+                action: () => this.highlightElement("#chart-mode-emissions", { stepIndex: 10, useParentCard: true }),
                 icon: "leaf"
             },
             {
                 title: "Data Preview",
                 description: "Review your raw data in this table. You can see all shipments with their key attributes and performance metrics.",
                 target: "#table-container",
-                action: () => this.highlightElement("#table-container"),
+                action: () => this.highlightElement("#table-container", { stepIndex: 11 }),
                 icon: "table"
             }
         ];
@@ -1527,28 +1506,56 @@ class WalkthroughSystem {
         iconContainer.innerHTML = icons[iconType] || icons.upload;
     }
 
-    highlightElement(selector) {
-        const element = document.querySelector(selector);
+    // smoothPreferred = true for smooth, false for instant fallback
+    async highlightElement(selector, {
+        stepIndex = 1,
+        smoothPreferred = true,
+        useParentCard = false,
+        forceTooltipBelow = false,
+        forceTooltipRight = false,
+        forceTooltipLeft = false
+    } = {}) {
+        let element = document.querySelector(selector);
         if (!element) {
             console.error('Element not found:', selector);
             return;
         }
 
-        // Blur any focused child that might affect measurements
-        if (document.activeElement && document.activeElement !== document.body) {
-            document.activeElement.blur();
+        // If this step wants the whole card, promote the target to its card wrapper
+        if (useParentCard && element.parentElement) {
+            element = element.parentElement; // the card directly wraps the chart div
         }
 
-        const rect = element.getBoundingClientRect();
         const overlay = document.getElementById('walkthrough-overlay');
         const spotlight = document.getElementById('walkthrough-spotlight');
         const tooltip = document.getElementById('walkthrough-tooltip');
 
-        // Ensure overlay itself is transparent; the shadow will provide the dim
+        // Hide spotlight/tooltip during scroll to avoid flicker (keep your existing approach)
+        const prevSpotlightVis = spotlight.style.visibility;
+        const prevTooltipVis = tooltip.style.visibility;
+        spotlight.style.visibility = 'hidden';
+        tooltip.style.visibility = 'hidden';
+
+        // --- existing scroll gating logic remains unchanged ---
+        // (Assumes helpers like getHeaderHeight, isTopBarElement, isFullyInView, scrollIntoViewCentered exist)
+        const shouldApplyScroll =
+            typeof SCROLL_APPLIES_FROM_STEP !== 'undefined'
+                ? (stepIndex >= SCROLL_APPLIES_FROM_STEP && !isTopBarElement(element) && !isFullyInView(element))
+                : false;
+
+        if (shouldApplyScroll) {
+            try {
+                await scrollIntoViewCentered(element, { smooth: smoothPreferred });
+            } catch {
+                await scrollIntoViewCentered(element, { smooth: false });
+            }
+        }
+
+        // ---- Rectangle spotlight (box-shadow cutout) — unchanged except using the (possibly) promoted element ----
+        const rect = element.getBoundingClientRect();
         overlay.style.background = 'transparent';
 
-        // Rectangle spotlight using box-shadow "cutout"
-        const padding = 24; // tweak as you like (20–40 looks good)
+        const padding = 24; // do NOT change
         const left = Math.max(0, rect.left - padding);
         const top = Math.max(0, rect.top - padding);
         const width = Math.min(window.innerWidth, rect.width + padding * 2);
@@ -1560,32 +1567,55 @@ class WalkthroughSystem {
             top: `${top}px`,
             width: `${width}px`,
             height: `${height}px`,
-            borderRadius: '12px',              // rounded rectangle
-            boxShadow: '0 0 0 9999px rgba(0,0,0,0.6)', // dim everything else
+            borderRadius: '12px',
+            boxShadow: '0 0 0 9999px rgba(0,0,0,0.6)',
             pointerEvents: 'none',
-            background: 'transparent'          // no gradient
+            background: 'transparent'
         });
 
-        // Optional: add a thin outline to the target for emphasis
-        element.style.outline = '2px solid #3b82f6';
-        element.style.outlineOffset = '2px';
-        element.style.borderRadius = '8px';
-
-        // Tooltip positioning (unchanged, but recalculated after spotlight)
-        const tooltipRect = tooltip.getBoundingClientRect();
-        let ttLeft = rect.left + rect.width / 2 - tooltipRect.width / 2;
-        let ttTop = rect.bottom + 20;
-
-        if (ttLeft < 20) ttLeft = 20;
-        if (ttLeft + tooltipRect.width > window.innerWidth - 20) {
-            ttLeft = window.innerWidth - tooltipRect.width - 20;
+        // Optional outline (leave as-is if you already do this)
+        if (!isTopBarElement(element)) {
+            element.style.outline = '2px solid #3b82f6';
+            element.style.outlineOffset = '2px';
+            element.style.borderRadius = '8px';
         }
-        if (ttTop + tooltipRect.height > window.innerHeight - 20) {
-            ttTop = rect.top - tooltipRect.height - 20;
+
+        // ---- Tooltip positioning (forced below for all steps, except step 6) ----
+        const tooltipRect = tooltip.getBoundingClientRect();
+        let ttLeft, ttTop;
+
+        if (stepIndex === 6) {
+            // Step 6: Position tooltip on the highlighted element (centered, shifted right)
+            ttLeft = rect.left + rect.width / 2 - tooltipRect.width / 2 + 40; // Move 40px to the right
+            ttTop = rect.top + rect.height / 2 - tooltipRect.height / 2;
+            
+            // Keep within viewport bounds
+            if (ttLeft < 20) ttLeft = 20;
+            if (ttLeft + tooltipRect.width > window.innerWidth - 20) {
+                ttLeft = window.innerWidth - tooltipRect.width - 20;
+            }
+            if (ttTop < 20) ttTop = 20;
+            if (ttTop + tooltipRect.height > window.innerHeight - 20) {
+                ttTop = window.innerHeight - tooltipRect.height - 20;
+            }
+        } else {
+            // All other steps: Position tooltip below the highlighted element
+            ttLeft = rect.left + rect.width / 2 - tooltipRect.width / 2;
+            ttTop = rect.bottom + 20; // always below
+
+            // bounds checks (horizontal only)
+            if (ttLeft < 20) ttLeft = 20;
+            if (ttLeft + tooltipRect.width > window.innerWidth - 20) {
+                ttLeft = window.innerWidth - tooltipRect.width - 20;
+            }
         }
 
         tooltip.style.left = `${ttLeft}px`;
         tooltip.style.top = `${ttTop}px`;
+
+        // Reveal spotlight/tooltip again
+        spotlight.style.visibility = prevSpotlightVis || 'visible';
+        tooltip.style.visibility = prevTooltipVis || 'visible';
     }
 
     removeSpotlight() {
