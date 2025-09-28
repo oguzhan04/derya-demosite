@@ -245,7 +245,7 @@
     <!-- Walkthrough Overlay -->
     <div id="walkthrough-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
         <div class="absolute inset-0" id="walkthrough-spotlight"></div>
-        <div id="walkthrough-tooltip" class="absolute bg-white rounded-lg shadow-xl border border-gray-200 p-6 max-w-sm transform transition-all duration-300">
+        <div id="walkthrough-tooltip" class="absolute bg-white rounded-lg shadow-xl border border-gray-200 p-6 max-w-md w-full transform transition-all duration-300">
             <div class="flex items-start space-x-3">
                 <div class="flex-shrink-0">
                     <div id="walkthrough-icon" class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -254,20 +254,22 @@
                         </svg>
                     </div>
                 </div>
-                <div class="flex-1">
-                    <h3 id="walkthrough-title" class="text-lg font-semibold text-gray-900 mb-2">Welcome to Derya AI Freight</h3>
-                    <p id="walkthrough-description" class="text-sm text-gray-700 mb-4">Let's explore the freight analytics dashboard together.</p>
-                    <div class="flex items-center justify-between">
+                <div class="flex-1 min-w-0">
+                    <h3 id="walkthrough-title" class="text-lg font-semibold text-gray-900 mb-2 break-words">Welcome to Derya AI Freight</h3>
+                    <p id="walkthrough-description" class="text-sm text-gray-700 mb-4 break-words">Let's explore the freight analytics dashboard together.</p>
+                    <div class="space-y-3">
                         <div class="flex items-center space-x-2">
-                            <span id="walkthrough-step" class="text-xs text-gray-500">Step 1 of 8</span>
-                            <div class="w-24 bg-gray-200 rounded-full h-1">
+                            <span id="walkthrough-step" class="text-xs text-gray-500 whitespace-nowrap">Step 1 of 8</span>
+                            <div class="flex-1 bg-gray-200 rounded-full h-1">
                                 <div id="walkthrough-progress" class="bg-blue-600 h-1 rounded-full transition-all duration-300" style="width: 12.5%"></div>
                             </div>
                         </div>
-                        <div class="flex items-center space-x-2">
-                            <button id="walkthrough-prev" class="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Previous</button>
-                            <button id="walkthrough-next" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors">Next</button>
-                            <button id="walkthrough-skip" class="px-3 py-1 text-sm text-gray-500 hover:text-gray-700">Skip</button>
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <div class="flex items-center space-x-2">
+                                <button id="walkthrough-prev" class="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap" disabled>Previous</button>
+                                <button id="walkthrough-next" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap">Next</button>
+                            </div>
+                            <button id="walkthrough-skip" class="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 whitespace-nowrap">Skip</button>
                         </div>
                     </div>
                 </div>
